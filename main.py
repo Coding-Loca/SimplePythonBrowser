@@ -6,12 +6,17 @@ class URL:
     def __init__(self, url):
         # Separating the scheme from rest of the URL
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https"]
-
+        assert self.scheme in ["http", "https", "file"]
+        print(url)
         if self.scheme == "http":
             self.port = 80
         elif self.scheme == "https":
             self.port = 443
+        elif self.scheme == "file":
+            self.host = ""
+            self.path = url
+            
+            return
 
         # Separating the host from the path
         if "/" not in url:
@@ -25,6 +30,12 @@ class URL:
             self.port = int(port)
         
     def request(self):
+        if self.scheme == "file":
+            with open(self.path) as f:
+                content = f.read()
+            return content
+
+        # Socket connection
         s = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_STREAM,
@@ -84,6 +95,8 @@ if __name__ == "__main__":
     import sys
     load(URL(sys.argv[1]))
 
-# TODO Github
-# STOPPED AT 7. Encrypted connection
+    # NOTE: 
+    # because of the way argv works (?), the standard \ slash in windows path
+    # causes issues, so the only way to make file:// scheme to work is writing
+    # a path with / forward slashes, `main.py file://c:/Users/examples.htm` 
         
