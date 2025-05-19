@@ -4,9 +4,17 @@ import ssl
 #URL parsing
 class URL:
     def __init__(self, url):
+        # Data scheme has a different format, so it's
+        # checked differently data:content/type;base64,
+        if url.split(":")[0] == "data":
+            self.scheme = "data"
+            self.host = ""
+            self.content_type, self.path = url.split(",",1)
+            return
+        
         # Separating the scheme from rest of the URL
         self.scheme, url = url.split("://", 1)
-        assert self.scheme in ["http", "https", "file"]
+        assert self.scheme in ["http", "https", "file", "data"]
         print(url)
         if self.scheme == "http":
             self.port = 80
@@ -15,9 +23,8 @@ class URL:
         elif self.scheme == "file":
             self.host = ""
             self.path = url
-            
             return
-
+        
         # Separating the host from the path
         if "/" not in url:
             url = url + "/"
@@ -30,6 +37,11 @@ class URL:
             self.port = int(port)
         
     def request(self):
+
+        # Seperate checks for these schemes
+        if self.scheme == "data":
+            content = self.path
+            return content
         if self.scheme == "file":
             with open(self.path) as f:
                 content = f.read()
@@ -78,8 +90,25 @@ class URL:
         return content # This is the body of the webpage
 
 def show(body):
+    entity = ""
+    entity_check = False
     in_tag = False
     for c in body:
+        # Replacing &lt and &gt entities with correct chars
+        if c.isspace():
+            entity_check = False
+            if entity == "lt":
+                print("<", end="")
+            if entity == "gt":
+                print(">", end="")
+        if entity_check == True:
+            entity = entity + c
+            continue
+        if c =="&":
+            entity_check = True
+            continue
+        
+        # Actual text rendering
         if c == "<":
             in_tag = True
         elif c == ">":
@@ -99,4 +128,6 @@ if __name__ == "__main__":
     # because of the way argv works (?), the standard \ slash in windows path
     # causes issues, so the only way to make file:// scheme to work is writing
     # a path with / forward slashes, `main.py file://c:/Users/examples.htm` 
+    # TODO:
+    # Data scheme is jank, and the enetity code could be cleaner I think
         
