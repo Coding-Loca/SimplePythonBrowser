@@ -1,5 +1,10 @@
 import socket
 import ssl
+import tkinter
+
+WIDTH, HEIGHT = 800, 600
+SCROLL_STEP = 100
+HSTEP, VSTEP = 13, 18
 
 #URL parsing
 class URL:
@@ -89,7 +94,9 @@ class URL:
         s.close
         return content # This is the body of the webpage
 
-def show(body):
+# Turning the html body into human-readable text
+def lex(body):
+    text = ""
     entity = ""
     entity_check = False
     in_tag = False
@@ -98,9 +105,9 @@ def show(body):
         if c.isspace():
             entity_check = False
             if entity == "lt":
-                print("<", end="")
+                text += "<"
             if entity == "gt":
-                print(">", end="")
+                text += ">"
         if entity_check == True:
             entity = entity + c
             continue
@@ -114,15 +121,52 @@ def show(body):
         elif c == ">":
             in_tag = False
         elif not in_tag:
-            print(c, end="")
+            text += c
+    return text
 
-def load(url):
-    body = url.request()
-    show(body)
+def layout(text):
+    display_list = []
+    cursor_x, cursor_y = HSTEP, VSTEP
+    for c in text:
+        display_list.append((cursor_x, cursor_y, c))
+        # Text wrapping
+        cursor_x += HSTEP
+        if cursor_x >= WIDTH - HSTEP:
+            cursor_y += VSTEP
+            cursor_x = HSTEP
+    return display_list
 
+class Browser:
+    def __init__(self):
+        self.window = tkinter.Tk()
+        self.canvas = tkinter.Canvas(
+            self.window,
+            width=WIDTH,
+            height=HEIGHT
+        )
+        self.canvas.pack()
+        self.scroll = 0
+        self.window.bind("<Down>", self.scrolldown)
+    # Drawing canvas
+    def draw(self):
+        self.canvas.delete("all") # Clears the previos canvas
+        for x, y, c in self.display_list:
+            # Skips rendering offscreen text
+            if y > self.scroll + HEIGHT: continue
+            if y + VSTEP < self.scroll: continue
+            self.canvas.create_text(x, y - self.scroll, text=c)
+    def load(self, url):
+        body = url.request()
+        text = lex(body)
+        self.display_list = layout(text)
+        self.draw()
+    def scrolldown(self, e):
+        self.scroll += SCROLL_STEP
+        self.draw()
 if __name__ == "__main__":
     import sys
-    load(URL(sys.argv[1]))
+    Browser().load(URL(sys.argv[1]))
+    tkinter.mainloop()
 
     # NOTE: 
     # because of the way argv works (?), the standard \ slash in windows path
