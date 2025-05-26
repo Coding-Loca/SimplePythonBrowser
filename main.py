@@ -127,11 +127,16 @@ def lex(body):
 def layout(text):
     display_list = []
     cursor_x, cursor_y = HSTEP, VSTEP
+    forward_slash = False
     for c in text:
         display_list.append((cursor_x, cursor_y, c))
         # Text wrapping
         cursor_x += HSTEP
         if cursor_x >= WIDTH - HSTEP:
+            cursor_y += VSTEP
+            cursor_x = HSTEP
+        # In case of newline, moves to next line
+        if c == "\n":
             cursor_y += VSTEP
             cursor_x = HSTEP
     return display_list
@@ -147,9 +152,17 @@ class Browser:
         self.canvas.pack()
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
+        self.window.bind("<MouseWheel>", self.scrolldown)
+        self.window.bind("<Up>", self.scrollup)
+    def mouse_wheel(self, event):
+        # respond to Linux or Windows wheel event
+        if event.num == 5 or event.delta == -120:
+            self.scroll -= 1
+        if event.num == 4 or event.delta == 120:
+            self.scroll += 1
     # Drawing canvas
     def draw(self):
-        self.canvas.delete("all") # Clears the previos canvas
+        self.canvas.delete("all") # Clears the previous canvas
         for x, y, c in self.display_list:
             # Skips rendering offscreen text
             if y > self.scroll + HEIGHT: continue
@@ -159,6 +172,9 @@ class Browser:
         body = url.request()
         text = lex(body)
         self.display_list = layout(text)
+        self.draw()
+    def scrollup(self, e):
+        self.scroll -= SCROLL_STEP
         self.draw()
     def scrolldown(self, e):
         self.scroll += SCROLL_STEP
