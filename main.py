@@ -6,6 +6,7 @@ WIDTH, HEIGHT = 800, 600
 SCROLL_STEP = 100
 HSTEP, VSTEP = 13, 18
 
+text_body = "" # This is jank, I don't know how to implement it more cleanly
 #URL parsing
 class URL:
     def __init__(self, url):
@@ -124,24 +125,9 @@ def lex(body):
             text += c
     return text
 
-def layout(text):
-    display_list = []
-    cursor_x, cursor_y = HSTEP, VSTEP
-    forward_slash = False
-    for c in text:
-        display_list.append((cursor_x, cursor_y, c))
-        # Text wrapping
-        cursor_x += HSTEP
-        if cursor_x >= WIDTH - HSTEP:
-            cursor_y += VSTEP
-            cursor_x = HSTEP
-        # In case of newline, moves to next line
-        if c == "\n":
-            cursor_y += VSTEP
-            cursor_x = HSTEP
-    return display_list
-
 class Browser:
+    width=WIDTH
+    height=HEIGHT
     def __init__(self):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
@@ -149,36 +135,68 @@ class Browser:
             width=WIDTH,
             height=HEIGHT
         )
-        self.canvas.pack()
+        self.canvas.pack(fill="none", expand=True)
         self.scroll = 0
         self.window.bind("<Down>", self.scrolldown)
-        self.window.bind("<MouseWheel>", self.scrolldown)
+        self.window.bind("<MouseWheel>", self.mouse_wheel)
         self.window.bind("<Up>", self.scrollup)
+        self.window.bind("<Configure>", self.on_resize)
     def mouse_wheel(self, event):
         # respond to Linux or Windows wheel event
         if event.num == 5 or event.delta == -120:
-            self.scroll -= 1
+            self.scroll += SCROLL_STEP
+            self.draw()
         if event.num == 4 or event.delta == 120:
-            self.scroll += 1
-    # Drawing canvas
+            self.scroll -= SCROLL_STEP
+            self.draw()
+    def mouse_wheel(self, event):
+        # respond to Linux or Windows wheel event
+        if event.num == 5 or event.delta == -120:
+            self.scroll += SCROLL_STEP
+            self.draw()
+        if event.num == 4 or event.delta == 120:
+            self.scroll -= SCROLL_STEP
+            self.draw()
+    
+    # Drawing canvas, load > layout > draw
+    def load(self, url):
+        body = url.request()
+        global text_body
+        text_body = lex(body)
+        self.display_list = self.layout(text_body)
+        self.draw()
+    def layout(self, text):
+        display_list = []
+        cursor_x, cursor_y = HSTEP, VSTEP
+        for c in text:
+            display_list.append((cursor_x, cursor_y, c))
+            # Text wrapping
+            cursor_x += HSTEP
+            if cursor_x >= self.width - HSTEP:
+                cursor_y += VSTEP
+                cursor_x = HSTEP
+            # In case of newline, moves to next line
+            if c == "\n":
+                cursor_y += VSTEP
+                cursor_x = HSTEP
+        return display_list
     def draw(self):
         self.canvas.delete("all") # Clears the previous canvas
         for x, y, c in self.display_list:
             # Skips rendering offscreen text
-            if y > self.scroll + HEIGHT: continue
+            if y > self.scroll + self.height: continue
             if y + VSTEP < self.scroll: continue
+
             self.canvas.create_text(x, y - self.scroll, text=c)
-    def load(self, url):
-        body = url.request()
-        text = lex(body)
-        self.display_list = layout(text)
-        self.draw()
-    def scrollup(self, e):
-        self.scroll -= SCROLL_STEP
-        self.draw()
-    def scrolldown(self, e):
-        self.scroll += SCROLL_STEP
-        self.draw()
+
+    def on_resize(self, event):
+            global text_body
+            self.canvas.pack(fill="none", expand=True)
+            self.width=event.width
+            self.height=event.height
+            self.display_list = self.layout(text_body)
+            self.draw()
+
 if __name__ == "__main__":
     import sys
     Browser().load(URL(sys.argv[1]))

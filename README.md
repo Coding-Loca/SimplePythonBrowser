@@ -17,3 +17,13 @@ https://browser.engineering/
 To run it, in the terminal type:
 `python main.py YourURL`
 
+# TODO
+Implement right to left text support
+about:blank
+scrollbar
+emoji
+view-source scheme
+Keep-alive connection
+Redirects
+Caching
+Compression
